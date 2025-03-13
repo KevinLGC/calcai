@@ -68,13 +68,27 @@ export async function POST(req: Request) {
         )
       }
 
-      // Access the message content directly
-      const content = message.content || ''
+      // Try to get content from different possible locations in the response
+      let content = ''
+      if (typeof message === 'object') {
+        if (message.content) {
+          content = message.content
+        } else if (message.text) {
+          content = message.text
+        } else if (typeof message === 'string') {
+          content = message
+        }
+      }
+
+      // If still no content, try to get it from the raw response
+      if (!content && data.choices?.[0]?.text) {
+        content = data.choices[0].text
+      }
       
       if (!content) {
-        console.error('Empty response content:', data)
+        console.error('Empty response content. Full response:', JSON.stringify(data, null, 2))
         return NextResponse.json(
-          { error: 'Empty response from API' },
+          { error: 'Empty response from API. Please try again.' },
           { status: 500 }
         )
       }
