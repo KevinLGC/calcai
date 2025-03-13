@@ -21,40 +21,42 @@ export async function POST(req: Request) {
     }
 
     try {
-      const response = await fetch('https://api.deepinfra.com/v1/inference/Qwen/QwQ-32B-Preview', {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`,
+          'HTTP-Referer': 'https://calcai-five.vercel.app',
+          'X-Title': 'CalcAI'
         },
         body: JSON.stringify({
-          input: {
-            messages: messages.map((msg: any) => ({
-              role: msg.role,
-              content: msg.content,
-            }))
-          },
-          stream: false
+          model: 'qwen/qwen1.5-72b',
+          messages: messages.map((msg: any) => ({
+            role: msg.role,
+            content: msg.content,
+          })),
+          temperature: 0.7,
+          max_tokens: 800,
         }),
       })
 
-      console.log('Qwen API Response Status:', response.status)
+      console.log('OpenRouter API Response Status:', response.status)
       const data = await response.json()
-      console.log('Qwen API Response Data:', JSON.stringify(data, null, 2))
+      console.log('OpenRouter API Response Data:', JSON.stringify(data, null, 2))
 
       if (!response.ok) {
-        console.error('DeepInfra API Error:', {
+        console.error('OpenRouter API Error:', {
           status: response.status,
           statusText: response.statusText,
           data: data
         })
         return NextResponse.json(
-          { error: `API Error: ${data.error || JSON.stringify(data)}` },
+          { error: `API Error: ${data.error?.message || JSON.stringify(data)}` },
           { status: response.status }
         )
       }
 
-      if (!data.results?.[0]?.text) {
+      if (!data.choices?.[0]?.message?.content) {
         console.error('Invalid API response:', data)
         return NextResponse.json(
           { error: `Invalid response format from API: ${JSON.stringify(data)}` },
@@ -63,13 +65,13 @@ export async function POST(req: Request) {
       }
 
       return NextResponse.json({
-        content: data.results[0].text,
+        content: data.choices[0].message.content,
         role: 'assistant'
       })
     } catch (fetchError) {
       console.error('Fetch error:', fetchError)
       return NextResponse.json(
-        { error: 'Failed to connect to Qwen API. Please check your internet connection.' },
+        { error: 'Failed to connect to OpenRouter API. Please check your internet connection.' },
         { status: 500 }
       )
     }
