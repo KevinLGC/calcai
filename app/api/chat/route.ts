@@ -30,7 +30,7 @@ export async function POST(req: Request) {
           'X-Title': 'CalcAI'
         },
         body: JSON.stringify({
-          model: 'qwen/qwq-32b:free',
+          model: 'qwen/qwen-72b',
           messages: messages.map((msg: any) => ({
             role: msg.role,
             content: msg.content,
@@ -45,19 +45,29 @@ export async function POST(req: Request) {
       
       // Log the full response data with proper stringification
       console.log('OpenRouter API Response Data:', JSON.stringify(data, null, 2))
-      console.log('Message object:', JSON.stringify(data.choices?.[0]?.message, null, 2))
 
       if (!response.ok) {
+        const errorMessage = data.error?.message || JSON.stringify(data)
         console.error('OpenRouter API Error:', {
           status: response.status,
           statusText: response.statusText,
-          data: data
+          errorMessage,
+          fullResponse: data
         })
         return NextResponse.json(
-          { error: `API Error: ${data.error?.message || JSON.stringify(data)}` },
+          { error: `API Error: ${errorMessage}` },
           { status: response.status }
         )
       }
+
+      // Log the exact structure we receive
+      console.log('Full response structure:', {
+        hasChoices: !!data.choices,
+        choicesLength: data.choices?.length,
+        firstChoice: data.choices?.[0],
+        messageType: typeof data.choices?.[0]?.message,
+        messageContent: data.choices?.[0]?.message?.content
+      })
 
       const message = data.choices?.[0]?.message
       if (!message || typeof message !== 'object') {
