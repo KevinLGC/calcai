@@ -21,22 +21,22 @@ export async function POST(req: Request) {
     }
 
     try {
-      const response = await fetch('https://api.qwen.ai/v1/chat/completions', {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`,
+          'HTTP-Referer': 'https://calcai-five.vercel.app',
+          'X-Title': 'CalcAI'
         },
         body: JSON.stringify({
-          model: 'qwen-32b',
+          model: 'qwen/qwq-32b:free',
           messages: messages.map((msg: any) => ({
             role: msg.role,
             content: msg.content,
           })),
           temperature: 0.7,
           max_tokens: 800,
-          top_p: 0.95,
-          stream: false,
         }),
       })
 
@@ -86,7 +86,7 @@ export async function POST(req: Request) {
     } catch (fetchError) {
       console.error('Fetch error:', fetchError)
       return NextResponse.json(
-        { error: 'Failed to connect to Qwen API. Please check your internet connection.' },
+        { error: 'Failed to connect to OpenRouter API. Please check your API key and internet connection.' },
         { status: 500 }
       )
     }
