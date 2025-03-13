@@ -56,9 +56,18 @@ export async function POST(req: Request) {
         )
       }
 
-      // Extract the actual response from the reasoning field
-      const reasoning = data.choices?.[0]?.message?.reasoning || ''
-      const finalResponse = reasoning.split('**Final Response**\n')[1]?.split('\n\n')[0]?.trim()
+      // Try to get the response from either content or reasoning field
+      const messageContent = data.choices?.[0]?.message?.content
+      const reasoning = data.choices?.[0]?.message?.reasoning
+      let finalResponse = messageContent
+
+      // If content is empty, try to extract from reasoning
+      if (!finalResponse && reasoning) {
+        const match = reasoning.split('**Final Response**\n')[1]?.split('\n\n')[0]?.trim()
+        if (match) {
+          finalResponse = match
+        }
+      }
 
       if (!finalResponse) {
         console.error('Invalid API response:', data)
