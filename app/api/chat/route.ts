@@ -21,6 +21,9 @@ export async function POST(req: Request) {
     }
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 50000); // 50 second timeout
+
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -38,16 +41,31 @@ export async function POST(req: Request) {
           temperature: 0.7,
           max_tokens: 800,
         }),
+        signal: controller.signal
       })
 
+      clearTimeout(timeoutId);
+
       console.log('OpenRouter API Response Status:', response.status)
-      const data = await response.json()
+      
+      // Handle non-JSON responses
+      const responseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Failed to parse API response:', responseText);
+        return NextResponse.json(
+          { error: 'Invalid response from API' },
+          { status: 500 }
+        );
+      }
       
       // Log the full response data with proper stringification
       console.log('OpenRouter API Response Data:', JSON.stringify(data, null, 2))
 
       if (!response.ok) {
-        const errorMessage = data.error?.message || JSON.stringify(data)
+        const errorMessage = data.error?.message || responseText;
         console.error('OpenRouter API Error:', {
           status: response.status,
           statusText: response.statusText,
@@ -109,15 +127,24 @@ export async function POST(req: Request) {
       })
     } catch (fetchError) {
       console.error('Fetch error:', fetchError)
+      let errorMessage = 'Failed to connect to OpenRouter API';
+      if (fetchError instanceof Error) {
+        if (fetchError.name === 'AbortError') {
+          errorMessage = 'Request timed out. Please try again.';
+        } else {
+          errorMessage = `${errorMessage}: ${fetchError.message}`;
+        }
+      }
       return NextResponse.json(
-        { error: 'Failed to connect to OpenRouter API. Please check your API key and internet connection.' },
-        { status: 500 }
+        { error: errorMessage },
+        { status: 504 }
       )
     }
   } catch (error) {
     console.error('Error in chat route:', error)
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
     return NextResponse.json(
-      { error: 'Failed to process chat request. Please try again.' },
+      { error: `Failed to process chat request: ${errorMessage}` },
       { status: 500 }
     )
   }
