@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Button } from '../ui/button'
-import { Send, Loader2 } from 'lucide-react'
+import { Send, Loader2, AlertCircle } from 'lucide-react'
 
 type Message = {
   role: 'user' | 'assistant'
@@ -13,6 +13,7 @@ export function Chat() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -31,6 +32,7 @@ export function Chat() {
     setMessages(prev => [...prev, userMessage])
     setInput('')
     setLoading(true)
+    setError(null)
 
     try {
       const response = await fetch('/api/chat', {
@@ -39,18 +41,24 @@ export function Chat() {
         body: JSON.stringify({ messages: [...messages, userMessage] }),
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        throw new Error('Failed to get response')
+        throw new Error(data.error || 'Failed to get response')
       }
 
-      const data = await response.json()
-      const assistantMessage: Message = { 
-        role: 'assistant', 
-        content: data.message || data.content || 'I apologize, but I encountered an error. Please try again.' 
+      if (data.error) {
+        throw new Error(data.error)
+      }
+
+      const assistantMessage: Message = {
+        role: 'assistant',
+        content: data.content
       }
       setMessages(prev => [...prev, assistantMessage])
     } catch (error) {
       console.error('Error:', error)
+      setError(error instanceof Error ? error.message : 'An unexpected error occurred')
       const errorMessage: Message = {
         role: 'assistant',
         content: 'Sorry, I encountered an error. Please try again.',
@@ -92,6 +100,15 @@ export function Chat() {
         )}
         <div ref={messagesEndRef} />
       </div>
+
+      {error && (
+        <div className="px-4 py-2 bg-red-50 dark:bg-red-900/20 border-t border-red-100 dark:border-red-800">
+          <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+            <AlertCircle className="h-4 w-4" />
+            <p className="text-sm">{error}</p>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="p-4 border-t border-gray-100 dark:border-gray-700">
         <div className="flex gap-2">

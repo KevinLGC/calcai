@@ -11,6 +11,14 @@ export async function POST(req: Request) {
       )
     }
 
+    if (!process.env.QWEN_API_KEY) {
+      console.error('QWEN_API_KEY is not set')
+      return NextResponse.json(
+        { error: 'API key not configured' },
+        { status: 500 }
+      )
+    }
+
     const response = await fetch('https://api.qwen.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -18,7 +26,7 @@ export async function POST(req: Request) {
         'Authorization': `Bearer ${process.env.QWEN_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'qwen-chat',
+        model: 'qwen-turbo',
         messages: messages.map((msg: any) => ({
           role: msg.role,
           content: msg.content,
@@ -33,16 +41,26 @@ export async function POST(req: Request) {
     if (!response.ok) {
       const error = await response.json().catch(() => ({}))
       console.error('Qwen API Error:', error)
-      throw new Error('Failed to get response from Qwen API')
+      return NextResponse.json(
+        { error: error.message || 'Failed to get response from Qwen API' },
+        { status: response.status }
+      )
     }
 
     const data = await response.json()
     
     if (!data.choices?.[0]?.message?.content) {
-      throw new Error('Invalid response format from Qwen API')
+      console.error('Invalid Qwen API response:', data)
+      return NextResponse.json(
+        { error: 'Invalid response format from Qwen API' },
+        { status: 500 }
+      )
     }
 
-    return NextResponse.json({ message: data.choices[0].message.content })
+    return NextResponse.json({
+      content: data.choices[0].message.content,
+      role: 'assistant'
+    })
   } catch (error) {
     console.error('Error in chat route:', error)
     return NextResponse.json(
