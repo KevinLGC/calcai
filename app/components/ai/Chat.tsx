@@ -44,7 +44,7 @@ export function Chat() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to get response')
+        throw new Error(data.error || `API Error: ${response.status} ${response.statusText}`)
       }
 
       if (data.error) {
@@ -61,7 +61,7 @@ export function Chat() {
       setError(error instanceof Error ? error.message : 'An unexpected error occurred')
       const errorMessage: Message = {
         role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
+        content: error instanceof Error ? `Error: ${error.message}` : 'Sorry, I encountered an error. Please try again.',
       }
       setMessages(prev => [...prev, errorMessage])
     } finally {
