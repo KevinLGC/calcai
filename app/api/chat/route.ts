@@ -30,7 +30,7 @@ export async function POST(req: Request) {
           'X-Title': 'CalcAI'
         },
         body: JSON.stringify({
-          model: 'qwen/qwen1.5-72b',
+          model: 'qwen/qwq-32b:free',
           messages: messages.map((msg: any) => ({
             role: msg.role,
             content: msg.content,
