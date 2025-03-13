@@ -121,6 +121,17 @@ export async function POST(req: Request) {
         )
       }
 
+      // Clean up the content by removing unnecessary symbols
+      content = content
+        .replace(/\*\*/g, '') // Remove **
+        .replace(/###/g, '') // Remove ###
+        .replace(/\\\(/g, '(') // Replace \( with (
+        .replace(/\\\)/g, ')') // Replace \) with )
+        .replace(/\\times/g, 'times') // Replace \times with times
+        .replace(/\\/g, '') // Remove any remaining backslashes
+        .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+        .trim(); // Remove leading/trailing whitespace
+
       return NextResponse.json({
         content,
         role: 'assistant'
