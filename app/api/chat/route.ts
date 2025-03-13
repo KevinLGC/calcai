@@ -21,28 +21,31 @@ export async function POST(req: Request) {
     }
 
     try {
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      const response = await fetch('https://api.qwen.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`,
-          'HTTP-Referer': 'https://calcai-five.vercel.app',
-          'X-Title': 'CalcAI'
         },
         body: JSON.stringify({
-          model: 'qwen/qwq-32b:free',
+          model: 'qwen-32b',
           messages: messages.map((msg: any) => ({
             role: msg.role,
             content: msg.content,
           })),
           temperature: 0.7,
           max_tokens: 800,
+          top_p: 0.95,
+          stream: false,
         }),
       })
 
       console.log('OpenRouter API Response Status:', response.status)
       const data = await response.json()
+      
+      // Log the full response data with proper stringification
       console.log('OpenRouter API Response Data:', JSON.stringify(data, null, 2))
+      console.log('Message object:', JSON.stringify(data.choices?.[0]?.message, null, 2))
 
       if (!response.ok) {
         console.error('OpenRouter API Error:', {
@@ -56,35 +59,34 @@ export async function POST(req: Request) {
         )
       }
 
-      // Try to get the response from either content or reasoning field
-      const messageContent = data.choices?.[0]?.message?.content
-      const reasoning = data.choices?.[0]?.message?.reasoning
-      let finalResponse = messageContent
-
-      // If content is empty, try to extract from reasoning
-      if (!finalResponse && reasoning) {
-        const match = reasoning.split('**Final Response**\n')[1]?.split('\n\n')[0]?.trim()
-        if (match) {
-          finalResponse = match
-        }
+      const message = data.choices?.[0]?.message
+      if (!message || typeof message !== 'object') {
+        console.error('Invalid message format:', message)
+        return NextResponse.json(
+          { error: 'Invalid response format from API' },
+          { status: 500 }
+        )
       }
 
-      if (!finalResponse) {
-        console.error('Invalid API response:', data)
+      // Access the message content directly
+      const content = message.content || ''
+      
+      if (!content) {
+        console.error('Empty response content:', data)
         return NextResponse.json(
-          { error: `Could not extract response from API result` },
+          { error: 'Empty response from API' },
           { status: 500 }
         )
       }
 
       return NextResponse.json({
-        content: finalResponse,
+        content,
         role: 'assistant'
       })
     } catch (fetchError) {
       console.error('Fetch error:', fetchError)
       return NextResponse.json(
-        { error: 'Failed to connect to OpenRouter API. Please check your internet connection.' },
+        { error: 'Failed to connect to Qwen API. Please check your internet connection.' },
         { status: 500 }
       )
     }
