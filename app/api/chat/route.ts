@@ -30,16 +30,18 @@ export async function POST(req: Request) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`,
           'HTTP-Referer': 'https://calcai-five.vercel.app',
-          'X-Title': 'CalcAI'
+          'X-Title': 'CalcAI',
+          'HTTP-User-Agent': 'CalcAI/1.0.0'
         },
         body: JSON.stringify({
           model: 'qwen/qwq-32b:free',
           messages: messages.map((msg: any) => ({
-            role: msg.role,
+            role: msg.role === 'user' ? 'user' : 'assistant',
             content: msg.content,
           })),
           temperature: 0.7,
           max_tokens: 800,
+          stream: false
         }),
         signal: controller.signal
       })
@@ -47,16 +49,19 @@ export async function POST(req: Request) {
       clearTimeout(timeoutId);
 
       console.log('OpenRouter API Response Status:', response.status)
+      console.log('OpenRouter API Response Headers:', Object.fromEntries(response.headers.entries()))
       
       // Handle non-JSON responses
       const responseText = await response.text();
+      console.log('Raw API Response:', responseText)
+      
       let data;
       try {
         data = JSON.parse(responseText);
       } catch (parseError) {
         console.error('Failed to parse API response:', responseText);
         return NextResponse.json(
-          { error: 'Invalid response from API' },
+          { error: 'Invalid response from API: ' + responseText.slice(0, 100) },
           { status: 500 }
         );
       }
@@ -84,39 +89,41 @@ export async function POST(req: Request) {
         choicesLength: data.choices?.length,
         firstChoice: data.choices?.[0],
         messageType: typeof data.choices?.[0]?.message,
-        messageContent: data.choices?.[0]?.message?.content
+        messageContent: data.choices?.[0]?.message?.content,
+        rawMessage: data.choices?.[0]?.message
       })
 
       const message = data.choices?.[0]?.message
-      if (!message || typeof message !== 'object') {
-        console.error('Invalid message format:', message)
+      if (!message) {
+        console.error('No message in response:', data)
         return NextResponse.json(
-          { error: 'Invalid response format from API' },
+          { error: 'No message received from API' },
           { status: 500 }
         )
       }
 
       // Try to get content from different possible locations in the response
       let content = ''
-      if (typeof message === 'object') {
-        if (message.content) {
-          content = message.content
-        } else if (message.text) {
-          content = message.text
-        } else if (typeof message === 'string') {
-          content = message
-        }
+      
+      if (typeof message === 'string') {
+        content = message
+      } else if (typeof message === 'object') {
+        content = message.content || message.text || JSON.stringify(message)
       }
 
       // If still no content, try to get it from the raw response
-      if (!content && data.choices?.[0]?.text) {
-        content = data.choices[0].text
+      if (!content) {
+        if (data.choices?.[0]?.text) {
+          content = data.choices[0].text
+        } else if (typeof data.choices?.[0] === 'string') {
+          content = data.choices[0]
+        }
       }
       
       if (!content) {
         console.error('Empty response content. Full response:', JSON.stringify(data, null, 2))
         return NextResponse.json(
-          { error: 'Empty response from API. Please try again.' },
+          { error: 'No content found in API response' },
           { status: 500 }
         )
       }
