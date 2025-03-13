@@ -56,16 +56,20 @@ export async function POST(req: Request) {
         )
       }
 
-      if (!data.choices?.[0]?.message?.content) {
+      // Extract the actual response from the reasoning field
+      const reasoning = data.choices?.[0]?.message?.reasoning || ''
+      const finalResponse = reasoning.split('**Final Response**\n')[1]?.split('\n\n')[0]?.trim()
+
+      if (!finalResponse) {
         console.error('Invalid API response:', data)
         return NextResponse.json(
-          { error: `Invalid response format from API: ${JSON.stringify(data)}` },
+          { error: `Could not extract response from API result` },
           { status: 500 }
         )
       }
 
       return NextResponse.json({
-        content: data.choices[0].message.content,
+        content: finalResponse,
         role: 'assistant'
       })
     } catch (fetchError) {
