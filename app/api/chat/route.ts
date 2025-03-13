@@ -23,7 +23,6 @@ export async function POST(req: Request) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-      // Log the request we're sending
       const requestBody = {
         model: 'qwen/qwq-32b:free',
         messages: messages.map((msg: any) => ({
@@ -34,8 +33,6 @@ export async function POST(req: Request) {
         max_tokens: 500,
         stream: false
       };
-
-      console.log('Sending request to OpenRouter:', requestBody);
 
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
@@ -52,17 +49,8 @@ export async function POST(req: Request) {
 
       clearTimeout(timeoutId);
 
-      // Log response status and headers
-      console.log('OpenRouter Response:', {
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries())
-      });
-
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('OpenRouter Error Response:', errorText);
-        
         try {
           const errorJson = JSON.parse(errorText);
           return NextResponse.json(
@@ -77,58 +65,39 @@ export async function POST(req: Request) {
         }
       }
 
-      const rawText = await response.text();
-      console.log('Raw API Response:', rawText);
+      const data = await response.json();
 
-      let data;
-      try {
-        data = JSON.parse(rawText);
-      } catch (e) {
-        console.error('Failed to parse API response:', e);
+      if (!data?.choices?.[0]?.message?.content) {
         return NextResponse.json(
-          { error: 'Invalid JSON response from API' },
+          { error: 'Invalid response format' },
           { status: 500 }
         );
       }
 
-      console.log('Parsed API Response:', data);
+      // Extract and clean the content
+      let content = data.choices[0].message.content;
 
-      // Check response structure
-      if (!data || typeof data !== 'object') {
-        return NextResponse.json(
-          { error: 'Invalid response structure' },
-          { status: 500 }
-        );
-      }
-
-      // Extract message content with fallbacks
-      let content = '';
+      // Remove internal reasoning patterns
+      content = content.replace(/\{[^}]*\}/g, ''); // Remove JSON-like structures
+      content = content.replace(/\\"reasoning\\":[^}]*(?=})/g, ''); // Remove reasoning field
+      content = content.replace(/Send\|+/g, ''); // Remove Send markers
+      content = content.replace(/\\n/g, ' '); // Replace newlines with spaces
       
-      if (data.choices?.[0]?.message?.content) {
-        content = data.choices[0].message.content;
-      } else if (data.choices?.[0]?.text) {
-        content = data.choices[0].text;
-      } else if (data.choices?.[0]?.message) {
-        content = JSON.stringify(data.choices[0].message);
-      }
-
-      if (!content) {
-        console.error('No content in response:', data);
-        return NextResponse.json(
-          { error: 'No content in API response' },
-          { status: 500 }
-        );
-      }
-
-      // Clean up the content
+      // Clean up common prefixes and meta-commentary
       content = content
-        .replace(/^(Okay,|Well,|I think|Let me|I will|I can|Here's|Sure)\s*/i, '')
-        .replace(/\s*\(.*?\)/g, '')
-        .replace(/\[[^\]]*\]/g, '')
-        .replace(/^The user asked about\s*/i, '')
-        .replace(/^To answer your question,\s*/i, '')
+        .replace(/^(Okay,|Well,|I think|Let me|I will|I can|Here's|Sure|Let's see|First,)\s*/i, '')
+        .replace(/^To respond,\s*/i, '')
+        .replace(/^To answer,\s*/i, '')
+        .replace(/^Analyzing this,\s*/i, '')
+        .replace(/\s*\(.*?\)/g, '') // Remove parenthetical comments
+        .replace(/\[[^\]]*\]/g, '') // Remove square bracket comments
+        .replace(/\{[^}]*\}/g, '') // Remove curly brace comments
+        .replace(/\\"/g, '"') // Fix escaped quotes
+        .replace(/"{2,}/g, '"') // Fix multiple quotes
+        .replace(/\\+/g, '') // Remove backslashes
         .trim();
 
+      // If content is empty after cleaning, provide a default response
       if (!content) {
         content = "Hi! How can I assist you today?";
       }
@@ -140,7 +109,6 @@ export async function POST(req: Request) {
 
     } catch (error: unknown) {
       if (error instanceof Error) {
-        console.error('Request error:', error);
         if (error.name === 'AbortError') {
           return NextResponse.json(
             { error: 'Request timed out' },
@@ -158,7 +126,6 @@ export async function POST(req: Request) {
       );
     }
   } catch (error) {
-    console.error('Request parsing error:', error);
     return NextResponse.json(
       { error: 'Invalid request' },
       { status: 400 }
