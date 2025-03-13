@@ -8,6 +8,7 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "CalcAI - Smart Calculator with AI",
   description: "A powerful calculator with AI capabilities for solving complex problems",
+  metadataBase: new URL('https://calcai-five.vercel.app'),
 };
 
 export default function RootLayout({
