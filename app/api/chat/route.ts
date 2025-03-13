@@ -21,22 +21,20 @@ export async function POST(req: Request) {
     }
 
     try {
-      const response = await fetch('https://api.qwen.ai/v1/chat/completions', {
+      const response = await fetch('https://api.deepinfra.com/v1/inference/Qwen/QwQ-32B-Preview', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: 'qwen-32b',
-          messages: messages.map((msg: any) => ({
-            role: msg.role,
-            content: msg.content,
-          })),
-          temperature: 0.7,
-          max_tokens: 800,
-          top_p: 0.95,
-          stream: false,
+          input: {
+            messages: messages.map((msg: any) => ({
+              role: msg.role,
+              content: msg.content,
+            }))
+          },
+          stream: false
         }),
       })
 
@@ -45,27 +43,27 @@ export async function POST(req: Request) {
       console.log('Qwen API Response Data:', JSON.stringify(data, null, 2))
 
       if (!response.ok) {
-        console.error('Qwen API Error:', {
+        console.error('DeepInfra API Error:', {
           status: response.status,
           statusText: response.statusText,
           data: data
         })
         return NextResponse.json(
-          { error: `Qwen API Error: ${data.error?.message || data.error || JSON.stringify(data)}` },
+          { error: `API Error: ${data.error || JSON.stringify(data)}` },
           { status: response.status }
         )
       }
 
-      if (!data.choices?.[0]?.message?.content) {
-        console.error('Invalid Qwen API response:', data)
+      if (!data.results?.[0]?.text) {
+        console.error('Invalid API response:', data)
         return NextResponse.json(
-          { error: `Invalid response format from Qwen API: ${JSON.stringify(data)}` },
+          { error: `Invalid response format from API: ${JSON.stringify(data)}` },
           { status: 500 }
         )
       }
 
       return NextResponse.json({
-        content: data.choices[0].message.content,
+        content: data.results[0].text,
         role: 'assistant'
       })
     } catch (fetchError) {
