@@ -108,29 +108,12 @@ export async function POST(req: Request) {
       if (typeof message === 'string') {
         content = message
       } else if (typeof message === 'object') {
-        // Check if we have a reasoning field and filter it out
-        if (message.reasoning) {
-          // Extract just the intended response, not the reasoning
-          content = message.content || ''
-        } else {
-          content = message.content || message.text || ''
-        }
+        // First try to get direct content
+        content = message.content || message.text || ''
 
-        // If content is empty but we have a reasoning field, try to extract the actual response
-        if (!content && message.reasoning) {
-          const reasoningMatch = message.reasoning.match(/^.*?(?=\. Let me|\.(?:\s|$))/);
-          if (reasoningMatch) {
-            content = reasoningMatch[0].replace(/^(?:Okay,|Well,|I think|I should|Maybe)\s*/i, '');
-          }
-        }
-
-        // If still no content, use the first sentence of reasoning as fallback
-        if (!content && message.reasoning) {
-          const firstSentence = message.reasoning.split(/\.(?:\s|$)/)[0];
-          if (firstSentence) {
-            content = firstSentence;
-          }
-        }
+        // Remove any meta-commentary about the user's message
+        content = content.replace(/^(?:the user said|user said|they said|I see that|I notice that)\s+["'].*?["']/i, '')
+        content = content.replace(/^(?:the user|user|they)\s+(?:is asking|asked|says|said)\s+.*?\./i, '')
       }
 
       // If still no content, try to get it from the raw response
@@ -150,7 +133,7 @@ export async function POST(req: Request) {
         )
       }
 
-      // Clean up the content by removing unnecessary symbols and internal reasoning patterns
+      // Clean up the content by removing unnecessary symbols and internal dialogue
       content = content
         .replace(/\*\*/g, '') // Remove **
         .replace(/###/g, '') // Remove ###
@@ -159,13 +142,14 @@ export async function POST(req: Request) {
         .replace(/\\times/g, 'times') // Replace \times with times
         .replace(/\\/g, '') // Remove any remaining backslashes
         .replace(/\s+/g, ' ') // Replace multiple spaces with single space
-        .replace(/^(?:Okay,|Well,|I think|I should|Maybe)\s*/i, '') // Remove common reasoning prefixes
-        .replace(/\. Let me.*$/, '') // Remove internal reasoning suffixes
+        .replace(/^(?:Okay,|Well,|I think|I should say|Maybe|Let me|I will|I can)\s*/i, '') // Remove thinking prefixes
+        .replace(/(?:\. Let me|\. I will|\. I should|\. I think|\. Maybe).*$/, '.') // Remove internal dialogue
+        .replace(/^.*?(?:Here's my response:|Here's what I'll say:|I'll respond with:|I'll say:)\s*/i, '') // Remove response prefixes
         .replace(/n+$/, '') // Remove trailing 'n' characters
         .trim(); // Remove leading/trailing whitespace
 
-      // If content is still empty after cleaning, provide a default response
-      if (!content.trim()) {
+      // If content is still empty or just meta-commentary, provide a default response
+      if (!content.trim() || content.match(/^(?:the user|user|they|I see|I notice)/i)) {
         content = "Hi! How can I assist you today?";
       }
 
