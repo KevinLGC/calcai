@@ -77,15 +77,27 @@ export async function POST(req: Request) {
       // Extract and clean the content
       let content = data.choices[0].message.content;
 
-      // Remove internal reasoning patterns
-      content = content.replace(/\{[^}]*\}/g, ''); // Remove JSON-like structures
-      content = content.replace(/\\"reasoning\\":[^}]*(?=})/g, ''); // Remove reasoning field
-      content = content.replace(/Send\|+/g, ''); // Remove Send markers
-      content = content.replace(/\\n/g, ' '); // Replace newlines with spaces
-      
-      // Clean up common prefixes and meta-commentary
+      // Function to clean markdown-style formatting
+      const cleanMarkdown = (text: string): string => {
+        return text
+          .replace(/\*\*/g, '') // Remove bold markers
+          .replace(/\#\#\#/g, '') // Remove heading markers
+          .replace(/^\s*[-•]\s*/gm, '') // Clean list markers
+          .replace(/`/g, '') // Remove code markers
+          .replace(/\n\s*\n/g, '\n') // Replace multiple newlines with single
+          .replace(/\|\|/g, '') // Remove spoiler tags
+          .replace(/~~/g, '') // Remove strikethrough
+          .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1') // Clean markdown links
+          .replace(/!\[[^\]]*\]\([^)]*\)/g, ''); // Clean markdown images
+      };
+
+      // Remove internal reasoning and meta patterns
       content = content
-        .replace(/^(Okay,|Well,|I think|Let me|I will|I can|Here's|Sure|Let's see|First,)\s*/i, '')
+        .replace(/\{[^}]*\}/g, '') // Remove JSON-like structures
+        .replace(/\\"reasoning\\":[^}]*(?=})/g, '') // Remove reasoning field
+        .replace(/Send\|+/g, '') // Remove Send markers
+        .replace(/\\n/g, '\n') // Preserve intentional line breaks
+        .replace(/^(Okay,|Well,|I think|Let me|I will|I can|Here's|Sure|Let's see|First,|As an AI|Based on|From what I understand)\s*/i, '')
         .replace(/^To respond,\s*/i, '')
         .replace(/^To answer,\s*/i, '')
         .replace(/^Analyzing this,\s*/i, '')
@@ -95,6 +107,24 @@ export async function POST(req: Request) {
         .replace(/\\"/g, '"') // Fix escaped quotes
         .replace(/"{2,}/g, '"') // Fix multiple quotes
         .replace(/\\+/g, '') // Remove backslashes
+        .trim();
+
+      // Clean markdown formatting
+      content = cleanMarkdown(content);
+
+      // Format lists and paragraphs properly
+      content = content
+        .split('\n')
+        .map((line: string): string => line.trim())
+        .filter((line: string): boolean => line.length > 0)
+        .join('\n');
+
+      // Remove any remaining meta-commentary phrases
+      content = content
+        .replace(/^Let me help you with that\.\s*/i, '')
+        .replace(/^I understand\.\s*/i, '')
+        .replace(/^I apologize\.\s*/i, '')
+        .replace(/^I'd be happy to help\.\s*/i, '')
         .trim();
 
       // If content is empty after cleaning, provide a default response
