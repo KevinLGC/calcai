@@ -1,15 +1,8 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import { ThemeProvider } from "@/components/theme-provider";
-import { Toaster } from "@/components/ui/use-toast";
+'use client'
 
-const inter = Inter({ subsets: ["latin"] });
-
-export const metadata: Metadata = {
-  title: "CalcAI - Your Intelligent Calculator",
-  description: "A smart calculator powered by AI",
-};
+import './globals.css'
+import { ThemeProvider } from 'next-themes'
+import { Toaster } from '@/components/ui/use-toast'
 
 export default function RootLayout({
   children,
@@ -18,19 +11,18 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <head />
+      <body>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
-          <main className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-violet-900">
-            {children}
-          </main>
+          {children}
           <Toaster />
         </ThemeProvider>
       </body>
     </html>
-  );
+  )
 }

@@ -16,6 +16,7 @@ interface Message {
 }
 
 export default function Chat() {
+  const [mounted, setMounted] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -23,9 +24,19 @@ export default function Chat() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { theme, setTheme } = useTheme()
 
+  // Handle hydration mismatch
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  // Prevent hydration issues
+  if (!mounted) {
+    return null
+  }
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
