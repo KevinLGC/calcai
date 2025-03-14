@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import * as React from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -15,36 +15,51 @@ interface Message {
   timestamp?: Date
 }
 
-export default function Chat() {
-  const [mounted, setMounted] = useState(false)
-  const [messages, setMessages] = useState<Message[]>([])
-  const [input, setInput] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [isCopied, setIsCopied] = useState(false)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const { theme, setTheme } = useTheme()
+function ThemeToggle() {
+  const { resolvedTheme, setTheme } = useTheme()
+  const [mounted, setMounted] = React.useState(false)
 
-  // Handle hydration mismatch
-  useEffect(() => {
+  React.useEffect(() => {
     setMounted(true)
   }, [])
 
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages])
-
-  // Prevent hydration issues
   if (!mounted) {
-    return null
+    return <div className="w-9 h-9" />
   }
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+      className="text-gray-600 dark:text-gray-400"
+    >
+      {resolvedTheme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+    </Button>
+  )
+}
+
+export default function Chat() {
+  const [messages, setMessages] = React.useState<Message[]>([])
+  const [input, setInput] = React.useState('')
+  const [isLoading, setIsLoading] = React.useState(false)
+  const [isCopied, setIsCopied] = React.useState(false)
+  const messagesEndRef = React.useRef<HTMLDivElement>(null)
+  const [mounted, setMounted] = React.useState(false)
+
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  React.useEffect(() => {
+    if (mounted && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [messages, mounted])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!input.trim() || isLoading) return
+    if (!input.trim() || isLoading || !mounted) return
 
     const userMessage: Message = {
       role: 'user',
@@ -90,14 +105,6 @@ export default function Chat() {
         description: "Failed to get response from AI. Please try again.",
         variant: "destructive"
       })
-      setMessages(prev => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: 'Sorry, I encountered an error. Please try again.',
-          timestamp: new Date()
-        }
-      ])
     } finally {
       setIsLoading(false)
     }
@@ -147,6 +154,10 @@ export default function Chat() {
     })
   }
 
+  if (!mounted) {
+    return null
+  }
+
   return (
     <div className={cn(
       "flex flex-col h-[calc(100vh-4rem)]",
@@ -159,14 +170,7 @@ export default function Chat() {
           AI Assistant
         </h2>
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="text-gray-600 dark:text-gray-400"
-          >
-            {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-          </Button>
+          <ThemeToggle />
           <Button
             variant="ghost"
             size="icon"
@@ -252,33 +256,22 @@ export default function Chat() {
         </div>
       </ScrollArea>
 
-      {/* Input Area */}
+      {/* Input Form */}
       <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200 dark:border-gray-800">
         <div className="flex gap-2 max-w-3xl mx-auto">
           <Textarea
             value={input}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e.target.value)}
+            onChange={(e) => setInput(e.target.value)}
             placeholder="Type your message..."
-            className={cn(
-              "flex-1",
-              "bg-white dark:bg-gray-800",
-              "border-gray-200 dark:border-gray-700",
-              "text-gray-900 dark:text-gray-100",
-              "placeholder-gray-400 dark:placeholder-gray-500",
-              "resize-none"
-            )}
-            rows={1}
+            className="min-h-[60px]"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                handleSubmit(e as any)
+              }
+            }}
           />
-          <Button
-            type="submit"
-            disabled={isLoading || !input.trim()}
-            className={cn(
-              "bg-purple-600 hover:bg-purple-700",
-              "text-white",
-              "transition-colors",
-              "disabled:opacity-50"
-            )}
-          >
+          <Button type="submit" disabled={isLoading || !input.trim()}>
             {isLoading ? (
               <Loader2 className="h-5 w-5 animate-spin" />
             ) : (

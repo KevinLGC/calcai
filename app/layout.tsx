@@ -1,8 +1,5 @@
-'use client'
-
 import './globals.css'
-import { ThemeProvider } from 'next-themes'
-import { Toaster } from '@/components/ui/use-toast'
+import { Providers } from './providers'
 
 export default function RootLayout({
   children,
@@ -11,17 +8,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head />
       <body>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          {children}
-          <Toaster />
-        </ThemeProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   )
