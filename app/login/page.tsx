@@ -28,6 +28,7 @@ export default function LoginPage() {
         </div>
         <Auth
           supabaseClient={supabase}
+          view="sign_in"
           appearance={{
             theme: ThemeSupa,
             variables: {
@@ -67,7 +68,12 @@ export default function LoginPage() {
             }
           }}
           providers={['google']}
+          providerScopes={{
+            google: 'profile email'
+          }}
+          redirectTo={typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : ''}
           theme="dark"
+          socialLayout="horizontal"
         />
       </div>
     </div>

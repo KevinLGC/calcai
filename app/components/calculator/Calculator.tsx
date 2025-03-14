@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Button } from '../ui/button'
-import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
 export function Calculator() {
   const [display, setDisplay] = useState('0')
@@ -35,106 +34,114 @@ export function Calculator() {
     setExpression('')
   }
 
-  const CalcButton = ({ children, onClick, className }: any) => (
+  const handleScientific = (func: string) => {
+    try {
+      let result
+      const num = parseFloat(display)
+      switch (func) {
+        case 'sin':
+          result = Math.sin(num)
+          break
+        case 'cos':
+          result = Math.cos(num)
+          break
+        case 'tan':
+          result = Math.tan(num)
+          break
+        case 'sqrt':
+          result = Math.sqrt(num)
+          break
+        case 'log':
+          result = Math.log10(num)
+          break
+        case 'ln':
+          result = Math.log(num)
+          break
+        default:
+          return
+      }
+      setDisplay(result.toString())
+      setExpression(result.toString())
+    } catch (error) {
+      setDisplay('Error')
+      setExpression('')
+    }
+  }
+
+  const CalcButton = ({ children, onClick, className = '' }: { 
+    children: React.ReactNode
+    onClick: () => void
+    className?: string 
+  }) => (
     <Button
-      variant="ghost"
-      className={cn(
-        'h-14 text-lg font-medium transition-all hover:scale-105 hover:bg-purple-100 dark:hover:bg-purple-900/30',
-        className
-      )}
       onClick={onClick}
+      className={`h-14 text-lg font-medium ${className}`}
+      variant="ghost"
     >
       {children}
     </Button>
   )
 
-  const buttons = [
-    ['7', '8', '9', '/'],
-    ['4', '5', '6', '*'],
-    ['1', '2', '3', '-'],
-    ['0', '.', '=', '+'],
-  ]
-
-  const scientificButtons = [
-    ['sin', 'cos', 'tan'],
-    ['log', 'ln', 'sqrt'],
-    ['(', ')', '^'],
-  ]
-
   return (
-    <div className="w-full max-w-md mx-auto space-y-4">
-      <div className="relative">
-        <div className="h-20 p-4 text-right text-3xl font-mono bg-gradient-to-r from-purple-100 to-indigo-100 dark:from-purple-900/30 dark:to-indigo-900/30 rounded-2xl shadow-inner">
-          <div className="text-sm text-gray-500 dark:text-gray-400 h-6 overflow-hidden">
-            {expression || '0'}
-          </div>
-          <div className="text-gray-800 dark:text-white overflow-hidden">
-            {display}
-          </div>
-        </div>
+    <div className="w-full max-w-md mx-auto">
+      {/* Display */}
+      <div className="bg-gray-800 rounded-lg p-4 mb-4">
+        <div className="text-gray-400 text-sm mb-1">{expression || '0'}</div>
+        <div className="text-white text-3xl font-bold font-mono">{display}</div>
       </div>
 
-      <Button
-        variant="outline"
-        className="w-full h-12 font-medium hover:bg-purple-100 dark:hover:bg-purple-900/30"
-        onClick={() => setIsScientific(!isScientific)}
-      >
-        {isScientific ? 'Basic' : 'Scientific'}
-      </Button>
-
-      {isScientific && (
-        <div className="grid grid-cols-3 gap-2">
-          {scientificButtons.map((row, i) => (
-            <div key={i} className="contents">
-              {row.map((btn) => (
-                <CalcButton
-                  key={btn}
-                  onClick={() => handleOperator(btn)}
-                  className="bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30"
-                >
-                  {btn}
-                </CalcButton>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="space-y-2">
-        <CalcButton
-          onClick={handleClear}
-          className="w-full bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400"
+      {/* Mode Toggle */}
+      <div className="mb-4">
+        <Button
+          onClick={() => setIsScientific(!isScientific)}
+          className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+          variant="default"
         >
-          Clear
-        </CalcButton>
+          {isScientific ? 'Basic Calculator' : 'Scientific Mode'}
+        </Button>
+      </div>
 
-        <div className="grid grid-cols-4 gap-2">
-          {buttons.map((row, i) => (
-            <div key={i} className="contents">
-              {row.map((btn) => (
-                <CalcButton
-                  key={btn}
-                  onClick={() =>
-                    btn === '='
-                      ? handleEquals()
-                      : /[0-9.]/.test(btn)
-                      ? handleNumber(btn)
-                      : handleOperator(btn)
-                  }
-                  className={
-                    btn === '='
-                      ? 'bg-purple-500 hover:bg-purple-600 text-white'
-                      : /[0-9.]/.test(btn)
-                      ? 'bg-white dark:bg-gray-800'
-                      : 'bg-gray-50 dark:bg-gray-700'
-                  }
-                >
-                  {btn}
-                </CalcButton>
-              ))}
-            </div>
-          ))}
-        </div>
+      {/* Calculator Grid */}
+      <div className="grid grid-cols-4 gap-2 bg-gray-800/50 rounded-lg p-2">
+        {isScientific && (
+          <>
+            <CalcButton onClick={() => handleScientific('sin')} className="text-purple-400">sin</CalcButton>
+            <CalcButton onClick={() => handleScientific('cos')} className="text-purple-400">cos</CalcButton>
+            <CalcButton onClick={() => handleScientific('tan')} className="text-purple-400">tan</CalcButton>
+            <CalcButton onClick={() => handleScientific('sqrt')} className="text-purple-400">√</CalcButton>
+            <CalcButton onClick={() => handleScientific('log')} className="text-purple-400">log</CalcButton>
+            <CalcButton onClick={() => handleScientific('ln')} className="text-purple-400">ln</CalcButton>
+            <CalcButton onClick={() => handleOperator('**')} className="text-purple-400">^</CalcButton>
+            <CalcButton onClick={() => handleOperator('(')} className="text-purple-400">(</CalcButton>
+            <CalcButton onClick={() => handleOperator(')')} className="text-purple-400">)</CalcButton>
+            <CalcButton onClick={() => handleOperator('Math.PI')} className="text-purple-400">π</CalcButton>
+            <CalcButton onClick={() => handleOperator('Math.E')} className="text-purple-400">e</CalcButton>
+            <CalcButton onClick={() => handleOperator('!')} className="text-purple-400">!</CalcButton>
+          </>
+        )}
+
+        <CalcButton onClick={handleClear} className="text-red-400">C</CalcButton>
+        <CalcButton onClick={() => handleOperator('/')} className="text-purple-400">÷</CalcButton>
+        <CalcButton onClick={() => handleOperator('*')} className="text-purple-400">×</CalcButton>
+        <CalcButton onClick={() => handleOperator('-')} className="text-purple-400">−</CalcButton>
+
+        <CalcButton onClick={() => handleNumber('7')}>7</CalcButton>
+        <CalcButton onClick={() => handleNumber('8')}>8</CalcButton>
+        <CalcButton onClick={() => handleNumber('9')}>9</CalcButton>
+        <CalcButton onClick={() => handleOperator('+')} className="text-purple-400">+</CalcButton>
+
+        <CalcButton onClick={() => handleNumber('4')}>4</CalcButton>
+        <CalcButton onClick={() => handleNumber('5')}>5</CalcButton>
+        <CalcButton onClick={() => handleNumber('6')}>6</CalcButton>
+        <CalcButton onClick={() => handleNumber('.')}>.</CalcButton>
+
+        <CalcButton onClick={() => handleNumber('1')}>1</CalcButton>
+        <CalcButton onClick={() => handleNumber('2')}>2</CalcButton>
+        <CalcButton onClick={() => handleNumber('3')}>3</CalcButton>
+        <CalcButton onClick={handleEquals} className="bg-purple-600 hover:bg-purple-700 text-white row-span-2">=</CalcButton>
+
+        <CalcButton onClick={() => handleNumber('0')} className="col-span-2">0</CalcButton>
+        <CalcButton onClick={() => handleNumber('00')}>00</CalcButton>
       </div>
     </div>
   )
