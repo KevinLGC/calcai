@@ -1,50 +1,24 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
-import { ChatMessage } from '@/types/chat'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { useRouter } from 'next/navigation'
+
+interface Message {
+  role: 'user' | 'assistant'
+  content: string
+}
 
 export default function Chat() {
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const router = useRouter()
-
-  useEffect(() => {
-    loadChatHistory()
-  }, [])
 
   useEffect(() => {
     scrollToBottom()
   }, [messages])
-
-  const loadChatHistory = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      router.push('/login')
-      return
-    }
-
-    const { data: chatHistory, error } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: true })
-
-    if (error) {
-      console.error('Error loading chat history:', error)
-      return
-    }
-
-    if (chatHistory) {
-      setMessages(chatHistory)
-    }
-  }
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -54,14 +28,7 @@ export default function Chat() {
     e.preventDefault()
     if (!input.trim() || isLoading) return
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      router.push('/login')
-      return
-    }
-
-    const userMessage: ChatMessage = {
-      user_id: user.id,
+    const userMessage: Message = {
       role: 'user',
       content: input.trim()
     }
@@ -71,16 +38,6 @@ export default function Chat() {
     setIsLoading(true)
 
     try {
-      // Save user message to Supabase
-      const { error: insertError } = await supabase
-        .from('messages')
-        .insert([userMessage])
-
-      if (insertError) {
-        console.error('Error saving message:', insertError)
-      }
-
-      // Get AI response
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
@@ -100,24 +57,21 @@ export default function Chat() {
 
       const data = await response.json()
 
-      const assistantMessage: ChatMessage = {
-        user_id: user.id,
+      const assistantMessage: Message = {
         role: 'assistant',
         content: data.content
-      }
-
-      // Save assistant message to Supabase
-      const { error: assistantError } = await supabase
-        .from('messages')
-        .insert([assistantMessage])
-
-      if (assistantError) {
-        console.error('Error saving assistant message:', assistantError)
       }
 
       setMessages(prev => [...prev, assistantMessage])
     } catch (error) {
       console.error('Error:', error)
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: 'Sorry, I encountered an error. Please try again.'
+        }
+      ])
     } finally {
       setIsLoading(false)
     }
